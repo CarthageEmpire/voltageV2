@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user settings, goals, and basic information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "goal": { "type": "string", "enum": ["lose", "gain", "health"] },
+        "targetWeight": { "type": "number" },
+        "startWeight": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "goal"]
+    },
+    "WeightLog": {
+      "title": "Weight Log",
+      "description": "Daily or periodic weight entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "weight": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "weight", "date"]
+    },
+    "SleepLog": {
+      "title": "Sleep Log",
+      "description": "Daily sleep duration tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "hours": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "hours", "date"]
+    },
+    "GymLog": {
+      "title": "Gym Log",
+      "description": "Tracking gym session completion.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "completed", "date"]
+    },
+    "NutritionLog": {
+      "title": "Nutrition Log",
+      "description": "Tracking if daily macro targets were reached.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "reached": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "reached", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Main user document"
+    },
+    "/users/{userId}/weightLogs/{logId}": {
+      "schema": "WeightLog",
+      "description": "Weight history for comparison"
+    },
+    "/users/{userId}/sleepLogs/{logId}": {
+      "schema": "SleepLog",
+      "description": "Sleep history for charts"
+    },
+    "/users/{userId}/gymLogs/{logId}": {
+      "schema": "GymLog",
+      "description": "Gym attendance tracking"
+    },
+    "/users/{userId}/nutritionLogs/{logId}": {
+      "schema": "NutritionLog",
+      "description": "Nutrition adherence tracking"
+    }
+  }
+}
