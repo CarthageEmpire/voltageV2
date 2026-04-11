@@ -430,13 +430,28 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => (
   </div>
 );
 
-const LoginPage = ({ onLogin, onBack }: { onLogin: () => void; onBack: () => void }) => {
+const LoginPage = ({ onLogin, onBack, onGuestContinue }: { onLogin: () => void; onBack: () => void; onGuestContinue: () => void }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEnterContinue = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || isLoading) return;
+
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+
+      e.preventDefault();
+      onGuestContinue();
+    };
+
+    window.addEventListener('keydown', handleEnterContinue);
+    return () => window.removeEventListener('keydown', handleEnterContinue);
+  }, [isLoading, onGuestContinue]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -585,6 +600,14 @@ const LoginPage = ({ onLogin, onBack }: { onLogin: () => void; onBack: () => voi
         >
           <LogIn size={20} />
           Google Account
+        </button>
+
+        <button 
+          onClick={onGuestContinue}
+          disabled={isLoading}
+          className="w-full bg-surface-container-low text-on-surface font-black py-3 rounded-xl tracking-widest uppercase border border-white/10 hover:border-primary/40 transition-colors disabled:opacity-50"
+        >
+          Press Enter To Continue
         </button>
 
         <div className="text-center space-y-4">
@@ -1419,6 +1442,7 @@ const ChatBot = ({
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
+  const [isGuestMode, setIsGuestMode] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
@@ -1496,10 +1520,27 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsAuthReady(true);
-      if (u) setShowAuth(false);
+      if (u) {
+        setShowAuth(false);
+        setIsGuestMode(false);
+      }
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (isGuestMode) {
+      setIsProfileLoaded(true);
+    }
+  }, [isGuestMode]);
+
+  const handleLogout = async () => {
+    if (user) {
+      await logout();
+    }
+    setIsGuestMode(false);
+    setShowAuth(false);
+  };
 
   // Firestore Sync
   useEffect(() => {
@@ -1597,7 +1638,14 @@ export default function App() {
   };
 
   const handleInitialize = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsGenerated(true);
+      setIsRecalibrating(false);
+      setIsProfileLoaded(true);
+      addNotification(isRecalibrating ? "Protocol recalibrated. Your strategy has been updated." : "Welcome, Athlete. Your Elite Protocol is now initialized. Time to execute.");
+      welcomeSent.current = true;
+      return;
+    }
     try {
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
@@ -1961,9 +2009,18 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuestMode) {
     if (showAuth) {
-      return <LoginPage onLogin={() => {}} onBack={() => setShowAuth(false)} />;
+      return (
+        <LoginPage
+          onLogin={() => {}}
+          onBack={() => setShowAuth(false)}
+          onGuestContinue={() => {
+            setIsGuestMode(true);
+            setShowAuth(false);
+          }}
+        />
+      );
     }
     return <LandingPage onGetStarted={() => setShowAuth(true)} />;
   }
@@ -1990,7 +2047,7 @@ export default function App() {
         setTheme={setTheme} 
       />
       <div className="flex">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={logout} onRecalibrate={() => setIsRecalibrating(true)} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} onRecalibrate={() => setIsRecalibrating(true)} />
         
         <main className="flex-1 lg:ml-64 p-6 lg:p-10 mb-24 lg:mb-0">
           <AnimatePresence>
