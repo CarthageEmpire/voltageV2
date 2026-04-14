@@ -1549,6 +1549,13 @@ Athlete profile:
 Respond in a concise, high-performance coaching style. No excessive markdown.
 User question: ${text}`;
 
+  if (typeof CONFIG === 'undefined' || isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
+    hideTypingIndicator();
+    pushChatMessage('system', 'Tito is in demo mode on this deployment (no server-side key). Showing local coach response.');
+    pushChatMessage('bot', buildFallbackCoachReply(text));
+    return;
+  }
+
   try {
     const reply = await sendCoachPrompt(systemPrompt);
     hideTypingIndicator();
