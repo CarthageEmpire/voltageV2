@@ -1467,6 +1467,13 @@ function isPlaceholderApiKey(value) {
     || key.includes('placeholder');
 }
 
+function formatKeyFingerprint(value) {
+  const key = String(value || '').trim();
+  if (!key) return 'none';
+  if (key.length <= 10) return `${key.slice(0, 2)}...(${key.length})`;
+  return `${key.slice(0, 6)}...${key.slice(-4)} (len:${key.length})`;
+}
+
 function buildFallbackCoachReply(userText) {
   const text = String(userText || '').toLowerCase();
 
@@ -1558,7 +1565,8 @@ User question: ${text}`;
     }
 
     if (isInvalidApiKeyError(msg)) {
-      pushChatMessage('system', 'Your Groq key is invalid or revoked. Update AI_API_KEY in config.local.js, then refresh the page.');
+      pushChatMessage('system', `Your Groq key is invalid or revoked. Active key: ${formatKeyFingerprint(CONFIG?.AI_API_KEY)}.`);
+      pushChatMessage('system', 'Update AI_API_KEY in config.local.js, then hard refresh (Ctrl+F5) so the browser does not reuse stale config.');
       pushChatMessage('bot', buildFallbackCoachReply(text));
       return;
     }
