@@ -1448,6 +1448,25 @@ function isQuotaOrRateLimitError(message) {
     || text.includes('429');
 }
 
+function isInvalidApiKeyError(message) {
+  const text = String(message || '').toLowerCase();
+  return text.includes('invalid api key')
+    || text.includes('invalid_api_key')
+    || text.includes('incorrect api key')
+    || text.includes('authentication failed')
+    || text.includes('unauthorized');
+}
+
+function isPlaceholderApiKey(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return !key
+    || key === 'your_groq_key_here'
+    || key === 'your_groq_api_key_here'
+    || key === 'your_ai_api_key_here'
+    || key.includes('your_')
+    || key.includes('placeholder');
+}
+
 function buildFallbackCoachReply(userText) {
   const text = String(userText || '').toLowerCase();
 
@@ -1471,8 +1490,8 @@ function buildFallbackCoachReply(userText) {
  */
 async function sendChatCompletionPrompt(fullPrompt) {
   const key = CONFIG?.AI_API_KEY?.trim();
-  if (!key || key === 'YOUR_GROQ_KEY_HERE') {
-    throw new Error('Missing AI_API_KEY in config.js — get a free key at https://console.groq.com');
+  if (isPlaceholderApiKey(key)) {
+    throw new Error('Missing valid AI key. Set AI_API_KEY in config.local.js (or config.js) using your Groq key from https://console.groq.com');
   }
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1498,10 +1517,10 @@ async function sendChatCompletionPrompt(fullPrompt) {
 }
 
 async function sendCoachPrompt(fullPrompt) {
-  if (typeof CONFIG !== 'undefined' && CONFIG.AI_API_KEY) {
+  if (typeof CONFIG !== 'undefined' && !isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
     return sendChatCompletionPrompt(fullPrompt);
   }
-  throw new Error('Missing AI_API_KEY in config.js');
+  throw new Error('Missing valid AI key in config.local.js or config.js');
 }
 
 async function sendChatMessage() {
@@ -1538,10 +1557,16 @@ User question: ${text}`;
       return;
     }
 
+    if (isInvalidApiKeyError(msg)) {
+      pushChatMessage('system', 'Your Groq key is invalid or revoked. Update AI_API_KEY in config.local.js, then refresh the page.');
+      pushChatMessage('bot', buildFallbackCoachReply(text));
+      return;
+    }
+
     pushChatMessage('system', `Tito unavailable: ${msg}`);
 
-    if (typeof CONFIG === 'undefined' || !CONFIG.AI_API_KEY || CONFIG.AI_API_KEY === 'YOUR_GROQ_KEY_HERE') {
-      pushChatMessage('system', 'Add your Groq API key to config.js. Get one free at https://console.groq.com');
+    if (typeof CONFIG === 'undefined' || isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
+      pushChatMessage('system', 'Add your Groq API key to config.local.js (recommended) or config.js. Get one free at https://console.groq.com');
     }
   }
 }
