@@ -26,9 +26,12 @@ const CONFIG = {
   // Powered by Groq via the OpenAI-compatible chat endpoint.
   // Get your free key at: https://console.groq.com
   // Paste it below as AI_API_KEY.
+  // For public deployment, set AI_PROXY_URL to your serverless proxy
+  // and keep AI_API_KEY as a placeholder in this file.
   // ----------------------------------------------------------
   AI_API_KEY: "your_groq_api_key_here",
   AI_MODEL: "llama-3.3-70b-versatile", 
+  AI_PROXY_URL: "",
 
   // ----------------------------------------------------------
   // Firebase Configuration

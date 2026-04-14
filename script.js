@@ -1474,6 +1474,10 @@ function formatKeyFingerprint(value) {
   return `${key.slice(0, 6)}...${key.slice(-4)} (len:${key.length})`;
 }
 
+function getProxyUrl() {
+  return String(CONFIG?.AI_PROXY_URL || '').trim();
+}
+
 function buildFallbackCoachReply(userText) {
   const text = String(userText || '').toLowerCase();
 
@@ -1496,9 +1500,33 @@ function buildFallbackCoachReply(userText) {
  * Calls Groq's OpenAI-compatible chat completions endpoint.
  */
 async function sendChatCompletionPrompt(fullPrompt) {
+  const proxyUrl = getProxyUrl();
+  const model = CONFIG?.AI_MODEL || 'llama-3.3-70b-versatile';
+
+  if (proxyUrl) {
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: fullPrompt }],
+        prompt: fullPrompt
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+
+    const reply = data?.reply?.trim() || data?.choices?.[0]?.message?.content?.trim();
+    if (!reply) throw new Error('Empty response from AI proxy');
+    return reply;
+  }
+
   const key = CONFIG?.AI_API_KEY?.trim();
   if (isPlaceholderApiKey(key)) {
-    throw new Error('Missing valid AI key. Set AI_API_KEY in config.local.js (or config.js) using your Groq key from https://console.groq.com');
+    throw new Error('Missing valid AI key. Set AI_PROXY_URL for public deployment, or set AI_API_KEY in config.local.js for local use.');
   }
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1524,10 +1552,10 @@ async function sendChatCompletionPrompt(fullPrompt) {
 }
 
 async function sendCoachPrompt(fullPrompt) {
-  if (typeof CONFIG !== 'undefined' && !isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
+  if (typeof CONFIG !== 'undefined' && (getProxyUrl() || !isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
     return sendChatCompletionPrompt(fullPrompt);
   }
-  throw new Error('Missing valid AI key in config.local.js or config.js');
+  throw new Error('Missing AI configuration: set AI_PROXY_URL (public) or AI_API_KEY in config.local.js (local).');
 }
 
 async function sendChatMessage() {
@@ -1549,7 +1577,7 @@ Athlete profile:
 Respond in a concise, high-performance coaching style. No excessive markdown.
 User question: ${text}`;
 
-  if (typeof CONFIG === 'undefined' || isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
+  if (typeof CONFIG === 'undefined' || (!getProxyUrl() && isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
     hideTypingIndicator();
     pushChatMessage('system', 'Tito is in demo mode on this deployment (no server-side key). Showing local coach response.');
     pushChatMessage('bot', buildFallbackCoachReply(text));
@@ -1580,8 +1608,8 @@ User question: ${text}`;
 
     pushChatMessage('system', `Tito unavailable: ${msg}`);
 
-    if (typeof CONFIG === 'undefined' || isPlaceholderApiKey(CONFIG.AI_API_KEY)) {
-      pushChatMessage('system', 'Add your Groq API key to config.local.js (recommended) or config.js. Get one free at https://console.groq.com');
+    if (typeof CONFIG === 'undefined' || (!getProxyUrl() && isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
+      pushChatMessage('system', 'Set AI_PROXY_URL for public deployment, or add your Groq key to config.local.js for local development.');
     }
   }
 }
