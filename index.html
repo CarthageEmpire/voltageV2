@@ -1,13 +1,908 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>voltage</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sunstone - Fitness Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
 
+  <!-- Firebase v10 modular SDK via CDN (compat mode for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Chart.js for data charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+
+<!-- ============================================================
+  LOADING SCREEN (shown while Firebase auth initialises)
+  ============================================================ -->
+<div id="loading-screen" class="loading-screen">
+  <div class="spinner"></div>
+</div>
+
+<!-- ============================================================
+  LANDING PAGE
+  ============================================================ -->
+<div id="landing-page" class="landing" style="display:none;">
+  <div class="landing-glow"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;">
+    <h1>SUNSTONE</h1>
+    <p class="landing-tagline">Track your workouts, food, and progress</p>
+    <button id="get-started-btn" class="btn btn-primary btn-lg" style="min-width:240px;">
+      Get Started
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+  AUTH PAGE (Login / Register)
+  ============================================================ -->
+<div id="auth-page" class="auth-page" style="display:none;">
+  <div class="auth-card">
+    <div class="modal-glow"></div>
+    <div class="auth-logo">SUNSTONE</div>
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab active" data-auth-tab="login" role="tab">Sign In</button>
+      <button class="auth-tab" data-auth-tab="register" role="tab">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="auth-login-form" class="auth-form-panel">
+      <div class="flex flex-col gap-3">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="login-email" class="form-input" placeholder="athlete@voltage.io" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" />
+        </div>
+        <div id="login-error" style="color:#f87171;font-size:0.7rem;display:none;"></div>
+        <button id="login-btn" class="btn btn-primary btn-full mt-2">Sign In</button>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="auth-register-form" class="auth-form-panel" style="display:none;">
+      <div class="flex flex-col gap-3">
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input type="text" id="register-name" class="form-input" placeholder="Your name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="register-email" class="form-input" placeholder="athlete@voltage.io" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="register-password" class="form-input" placeholder="Min. 6 characters" />
+        </div>
+        <div id="register-error" style="color:#f87171;font-size:0.7rem;display:none;"></div>
+        <button id="register-btn" class="btn btn-primary btn-full mt-2">Create Account</button>
+      </div>
+    </div>
+
+    <div class="auth-divider"><hr /><span>or</span><hr /></div>
+
+    <button id="google-signin-btn" class="btn btn-outline btn-full" style="gap:0.75rem;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider"><hr /><span>or</span><hr /></div>
+
+    <button id="guest-btn" class="btn btn-outline btn-full" style="font-size:0.6rem;">
+      Continue as Guest (no sync)
+    </button>
+
+    <button id="auth-back-btn" style="margin-top:1rem;background:none;border:none;font-size:0.625rem;color:var(--color-on-surface-variant);cursor:pointer;text-transform:uppercase;letter-spacing:0.1em;">
+      ← Back to Home
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+  MAIN APP (shown after auth/guest mode)
+  ============================================================ -->
+<div id="main-app" style="display:none;">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-logo">SUNSTONE</div>
+      <div class="topbar-actions">
+        <!-- Notifications -->
+        <div style="position:relative;">
+          <button class="icon-btn" id="notif-btn" title="Notifications">
+            <i data-lucide="bell" width="20" height="20"></i>
+            <span class="notif-badge" id="notif-badge" style="display:none;"></span>
+          </button>
+          <div class="notif-dropdown scrollbar-hide" id="notif-dropdown">
+            <div class="notif-header">
+              <h4>Notifications</h4>
+              <button class="notif-mute-btn" id="notif-mute-btn">Mute</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+              <p class="notif-empty">No new notifications.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <button class="icon-btn" id="settings-btn" title="Settings">
+          <i data-lucide="settings" width="20" height="20"></i>
+        </button>
+
+        <!-- Avatar -->
+        <button class="avatar-btn" id="topbar-avatar" title="Profile">
+          <i data-lucide="user" width="20" height="20" id="topbar-avatar-icon"></i>
+          <img id="topbar-avatar-img" src="" alt="Profile" style="display:none;width:100%;height:100%;object-fit:cover;" referrerpolicy="no-referrer" />
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LAYOUT -->
+  <div class="app-layout">
+    <!-- SIDEBAR (desktop) -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">SUNSTONE</div>
+      <nav>
+        <button class="sidebar-link active" data-tab="home">
+          <i data-lucide="home" width="18" height="18"></i> Home
+        </button>
+        <button class="sidebar-link" data-tab="workouts">
+          <i data-lucide="dumbbell" width="18" height="18"></i> Workouts
+        </button>
+        <button class="sidebar-link" data-tab="nutrition">
+          <i data-lucide="utensils" width="18" height="18"></i> Nutrition
+        </button>
+        <button class="sidebar-link" data-tab="tracker">
+          <i data-lucide="trending-up" width="18" height="18"></i> 30-Day Tracker
+        </button>
+        <button class="sidebar-link" data-tab="habits">
+          <i data-lucide="target" width="18" height="18"></i> Habits
+        </button>
+        <button class="sidebar-link" data-tab="profile">
+          <i data-lucide="user" width="18" height="18"></i> Profile
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="btn btn-outline btn-sm btn-full" id="recalibrate-btn" style="gap:0.5rem;">
+          <i data-lucide="refresh-cw" width="14" height="14"></i> Update Plan
+        </button>
+        <button class="btn btn-outline btn-sm btn-full" id="logout-btn" style="gap:0.5rem;">
+          <i data-lucide="log-out" width="14" height="14"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+      <!-- ====================================================
+        INITIALIZE / RECALIBRATE MODAL
+        ==================================================== -->
+      <div class="modal-overlay" id="init-modal">
+        <div class="modal">
+          <div class="modal-glow"></div>
+          <button class="modal-close" id="init-modal-close" style="display:none;">
+            <i data-lucide="x" width="20" height="20"></i>
+          </button>
+          <h2 id="init-modal-title">Set Up Your Plan</h2>
+          <div class="grid-2" style="gap:1.5rem;margin-bottom:1.5rem;position:relative;z-index:1;">
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="init-weight" class="form-input form-input-lg" placeholder="75" value="75" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" id="init-height" class="form-input form-input-lg" placeholder="175" value="175" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input type="number" id="init-age" class="form-input form-input-lg" placeholder="25" value="25" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sex</label>
+              <select id="init-sex" class="form-input form-input-lg">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1.5rem;position:relative;z-index:1;">
+            <label class="form-label">Activity Level</label>
+            <select id="init-activity" class="form-input form-input-lg">
+              <option value="Sedentary">Sedentary (Office job, little exercise)</option>
+              <option value="Lightly Active">Lightly Active (1-2 days/week)</option>
+              <option value="Moderately Active" selected>Moderately Active (3-5 days/week)</option>
+              <option value="Very Active">Very Active (6-7 days/week)</option>
+              <option value="Elite Athlete">Elite Athlete (Professional training)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:2rem;position:relative;z-index:1;">
+            <label class="form-label">Performance Goal</label>
+            <select id="init-goal" class="form-input form-input-lg">
+              <option value="lose">Fat Loss / Definition</option>
+              <option value="gain">Hypertrophy / Power</option>
+              <option value="health">Endurance / Longevity</option>
+            </select>
+          </div>
+          <button id="generate-protocol-btn" class="btn btn-primary btn-full btn-lg" style="position:relative;z-index:1;">
+            Create Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        HOME TAB
+        ==================================================== -->
+      <div id="tab-home" class="tab-panel active section-gap">
+        <div>
+          <h2 class="section-heading" id="home-greeting">LOADING...</h2>
+          <p class="section-sub" id="home-date"></p>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="grid-4" id="stats-row">
+          <div class="card">
+            <p class="card-title">Streak</p>
+            <p class="card-value text-primary" id="stat-streak">0</p>
+            <p class="card-subtitle">Days Active</p>
+          </div>
+          <div class="card">
+            <p class="card-title">Total Points</p>
+            <p class="card-value text-primary" id="stat-points">0</p>
+            <p class="card-subtitle" id="stat-badge">Initiate</p>
+          </div>
+          <div class="card">
+            <p class="card-title">Gym Sessions</p>
+            <p class="card-value text-primary" id="stat-gym">0</p>
+            <p class="card-subtitle">Total Logged</p>
+          </div>
+          <div class="card">
+            <p class="card-title">Avg Sleep</p>
+            <p class="card-value text-primary" id="stat-sleep">—</p>
+            <p class="card-subtitle">Hours / Night</p>
+          </div>
+        </div>
+
+        <!-- BMI + Macros row -->
+        <div class="grid-2">
+          <!-- BMI Card -->
+          <div class="card">
+            <p class="card-title">BMI</p>
+            <div class="flex items-center" style="gap:1rem;margin-bottom:1rem;">
+              <span class="card-value text-primary" id="bmi-value">—</span>
+              <span id="bmi-label" style="font-size:0.75rem;font-weight:700;color:var(--color-primary);text-transform:uppercase;"></span>
+            </div>
+            <div class="bmi-bar-track">
+              <div class="bmi-bar-fill" id="bmi-bar" style="width:0%;background:var(--color-primary);"></div>
+            </div>
+            <div class="flex justify-between mt-1">
+              <span class="text-xxs text-muted">15</span>
+              <span class="text-xxs text-muted">Underweight</span>
+              <span class="text-xxs text-muted">Healthy</span>
+              <span class="text-xxs text-muted">Over</span>
+              <span class="text-xxs text-muted">40+</span>
+            </div>
+          </div>
+
+          <!-- Macro Targets Card -->
+          <div class="card">
+            <div class="flex justify-between items-center mb-4">
+              <p class="card-title">Daily Targets</p>
+              <button id="macro-override-btn" class="btn btn-outline btn-sm">Override</button>
+            </div>
+            <div class="grid-2" style="gap:0.75rem;">
+              <div>
+                <p class="text-xxs text-muted uppercase tracking-widest">Calories</p>
+                <p style="font-size:1.25rem;font-weight:900;color:var(--color-primary);" id="macro-cal">—</p>
+              </div>
+              <div>
+                <p class="text-xxs text-muted uppercase tracking-widest">Protein</p>
+                <p style="font-size:1.25rem;font-weight:900;" id="macro-p">—</p>
+              </div>
+              <div>
+                <p class="text-xxs text-muted uppercase tracking-widest">Carbs</p>
+                <p style="font-size:1.25rem;font-weight:900;" id="macro-c">—</p>
+              </div>
+              <div>
+                <p class="text-xxs text-muted uppercase tracking-widest">Fat</p>
+                <p style="font-size:1.25rem;font-weight:900;" id="macro-f">—</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weight Chart -->
+        <div class="card">
+          <div class="flex justify-between items-center mb-4">
+            <p class="card-title">Weight Progress</p>
+            <div class="flex gap-2">
+              <input type="number" id="log-weight-input" class="form-input" style="width:80px;" placeholder="kg" />
+              <button id="log-weight-btn" class="btn btn-primary btn-sm">Log</button>
+            </div>
+          </div>
+          <div style="position:relative;height:200px;">
+            <canvas id="weight-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        WORKOUTS TAB
+        ==================================================== -->
+      <div id="tab-workouts" class="tab-panel section-gap">
+        <div class="workout-protocol-head">
+          <div>
+            <h2 class="section-heading">Workout Plan</h2>
+            <p class="workout-optimized">
+              Optimized for: <span class="goal-badge" id="workout-goal-label">LOSE</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="workout-toolbar">
+          <div class="workout-toolbar-group">
+            <span class="workout-toolbar-label">Location</span>
+            <div class="session-tabs" id="env-tabs">
+              <button type="button" class="session-tab pill active" data-env="gym">Gym / Machines</button>
+              <button type="button" class="session-tab pill" data-env="home">Home / Outdoor</button>
+            </div>
+          </div>
+          <div class="workout-toolbar-group" style="align-items:flex-end;">
+            <span class="workout-toolbar-label">Split</span>
+            <div class="session-tabs" id="session-tabs">
+              <button type="button" class="session-tab active" data-session="push">Push</button>
+              <button type="button" class="session-tab" data-session="pull">Pull</button>
+              <button type="button" class="session-tab" data-session="legs">Legs</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="session-exercises-head">
+            <span class="session-exercises-title">Session Exercises</span>
+            <button type="button" id="add-exercise-toggle" class="link-add-exercise">+ Add Exercise</button>
+          </div>
+
+          <!-- Inline add form -->
+          <div class="add-form" id="add-exercise-form">
+            <div class="form-group">
+              <label class="form-label">Exercise Name</label>
+              <input type="text" id="new-ex-name" class="form-input" placeholder="e.g. Incline Bench Press" />
+            </div>
+            <div class="add-form-grid">
+              <div class="form-group">
+                <label class="form-label">Sets</label>
+                <input type="number" id="new-ex-sets" class="form-input" placeholder="4" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Reps</label>
+                <input type="text" id="new-ex-reps" class="form-input" placeholder="8-10" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Focus / tip</label>
+              <input type="text" id="new-ex-note" class="form-input" placeholder="e.g. Upper chest focus" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description (optional)</label>
+              <input type="text" id="new-ex-desc" class="form-input" placeholder="Compound movement targeting…" />
+            </div>
+            <div class="flex gap-2">
+              <button type="button" id="save-exercise-btn" class="btn btn-primary btn-sm">Save</button>
+              <button type="button" id="cancel-exercise-btn" class="btn btn-outline btn-sm">Cancel</button>
+            </div>
+          </div>
+
+          <div id="exercise-list" class="flex flex-col" style="gap:0.75rem;"></div>
+        </div>
+
+        <!-- Log gym session -->
+        <div class="card" id="workout-log-card" style="text-align:center;">
+          <p class="card-title">Log Today's Session</p>
+          <p class="text-xs text-muted" style="margin-bottom:1rem;">Did you complete your workout?</p>
+          <div id="workout-log-actions">
+            <button type="button" id="log-gym-btn" class="btn btn-primary">
+              <i data-lucide="check-circle-2" width="16" height="16"></i> Mark Complete
+            </button>
+          </div>
+          <p id="workout-log-status" class="text-xs text-muted" style="display:none;margin-top:1rem;">Workout logged for today</p>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        NUTRITION TAB
+        ==================================================== -->
+      <div id="tab-nutrition" class="tab-panel section-gap">
+        <div>
+          <h2 class="section-heading">Nutrition Plan</h2>
+          <p class="section-sub" id="nutrition-plan-title">Loading...</p>
+        </div>
+
+        <!-- Meals -->
+        <div id="meals-container" class="flex flex-col" style="gap:1.5rem;"></div>
+
+        <!-- Log nutrition -->
+        <div class="card" id="nutrition-log-card" style="text-align:center;">
+          <p class="card-title">Log Macro Adherence</p>
+          <p class="text-xs text-muted" style="margin-bottom:1rem;">Did you hit your macro targets today?</p>
+          <div class="flex justify-center gap-3" id="nutrition-log-actions">
+            <button id="log-nutrition-yes" class="btn btn-primary">
+              <i data-lucide="check" width="16" height="16"></i> Yes
+            </button>
+            <button id="log-nutrition-no" class="btn btn-outline">
+              <i data-lucide="x" width="16" height="16"></i> No
+            </button>
+          </div>
+          <p id="nutrition-log-status" class="text-xs text-muted" style="display:none;margin-top:1rem;">Logged for today</p>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        TRACKER TAB
+        ==================================================== -->
+      <div id="tab-tracker" class="tab-panel section-gap">
+        <div class="tracker-page-head">
+          <div>
+            <h2 class="section-heading">Performance Analytics</h2>
+            <p class="section-sub">30-Day Recovery &amp; Composition</p>
+          </div>
+          <div class="tracker-status-block">
+            <p class="tracker-status-label">Current Status</p>
+            <p class="tracker-status-day" id="tracker-day-label">Day 14</p>
+          </div>
+        </div>
+
+        <!-- Habit protocol consistency (summary — synced with Habits tab) -->
+        <div class="card consistency-card">
+          <div class="consistency-ring-wrap">
+            <div class="consistency-ring" id="tracker-consistency-ring" style="--consistency-pct:0%;">
+              <div class="consistency-ring-inner">
+                <div class="consistency-ring-pct" id="tracker-consistency-pct">0%</div>
+                <div class="consistency-ring-label" id="tracker-consistency-ring-label">Progress</div>
+              </div>
+            </div>
+          </div>
+          <p class="consistency-quote" id="tracker-habit-quote">
+            Complete your daily habit grid to drive this score. Target above 80% across all habits for the month so far.
+          </p>
+        </div>
+
+        <!-- Sleep Architecture -->
+        <div class="card">
+          <div class="card-head-row">
+            <div>
+              <div class="card-head-title">
+                <i data-lucide="moon" width="18" height="18" style="color:var(--color-primary);"></i>
+                <div>
+                  <h3>Sleep Architecture</h3>
+                  <p class="card-head-sub">Daily recovery monitoring (0–12h)</p>
+                </div>
+              </div>
+            </div>
+            <div class="card-head-actions">
+              <span class="mass-input-pill" style="gap:0.5rem;">
+                <i data-lucide="clock" width="14" height="14"></i> Hours
+              </span>
+            </div>
+          </div>
+          <div class="flex gap-3 items-center" style="margin-bottom:1.5rem;flex-wrap:wrap;">
+            <input type="number" id="sleep-input" class="form-input" style="width:100px;" placeholder="Hours" min="0" max="12" step="0.5" />
+            <button type="button" id="log-sleep-btn" class="btn btn-primary btn-sm">Log Sleep</button>
+          </div>
+          <div style="position:relative;height:220px;">
+            <canvas id="sleep-chart"></canvas>
+          </div>
+          <div id="sleep-log-list" class="grid-auto scrollbar-hide" style="max-height:200px;overflow-y:auto;margin-top:1rem;gap:0.5rem;"></div>
+        </div>
+
+        <!-- Mass Evolution -->
+        <div class="card">
+          <div class="card-head-row">
+            <div>
+              <div class="card-head-title">
+                <i data-lucide="scale" width="18" height="18" style="color:var(--color-primary);"></i>
+                <div>
+                  <h3>Mass Evolution</h3>
+                  <p class="card-head-sub">Body composition trajectory</p>
+                </div>
+              </div>
+            </div>
+            <div class="card-head-actions">
+              <span class="mass-input-pill" id="tracker-weight-display">— kg</span>
+            </div>
+          </div>
+          <div style="position:relative;height:200px;">
+            <canvas id="weight-chart-tracker"></canvas>
+          </div>
+        </div>
+
+        <!-- Workout Commitment -->
+        <div class="card">
+          <div class="card-head-row">
+            <div>
+              <div class="card-head-title">
+                <i data-lucide="dumbbell" width="18" height="18" style="color:var(--color-primary);"></i>
+                <div>
+                  <h3>Workout Commitment</h3>
+                  <p class="card-head-sub">Weekly frequency</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grid-2" style="gap:1.5rem;align-items:flex-end;margin-bottom:1rem;">
+            <div>
+              <p class="text-xxs text-muted uppercase tracking-widest" style="margin-bottom:0.35rem;">Weekly frequency</p>
+              <p style="font-size:1.5rem;font-weight:900;font-style:italic;" id="tracker-weekly-sessions">0 sessions</p>
+              <p class="text-xxs" style="margin-top:0.35rem;color:var(--color-primary);">Recommended: 3–5 sessions / week</p>
+            </div>
+          </div>
+          <div class="weekly-bars" id="tracker-weekly-bars" aria-hidden="true"></div>
+        </div>
+
+        <!-- Nutritional Consistency (detail) -->
+        <div class="card">
+          <div class="card-head-row">
+            <div>
+              <div class="card-head-title">
+                <i data-lucide="leaf" width="18" height="18" style="color:#4ade80;"></i>
+                <div>
+                  <h3>Nutritional Consistency</h3>
+                  <p class="card-head-sub">Macro target adherence tracking</p>
+                </div>
+              </div>
+            </div>
+            <div class="card-head-actions">
+              <span class="btn-target-pill" id="tracker-nutrition-target">Target</span>
+            </div>
+          </div>
+          <div class="nutrition-tracker-grid">
+            <div class="nutrition-ring-lg" id="tracker-nutrition-ring" style="--nutrition-pct:0%;">
+              <div class="nutrition-ring-inner" id="tracker-nutrition-ring-label">0%<br/>Consistency</div>
+            </div>
+            <div>
+              <div class="nutrition-monthly-row">
+                <span>Monthly Target</span>
+                <strong id="tracker-nutrition-days">0 / 30 Days</strong>
+              </div>
+              <div class="progress-track" style="height:8px;">
+                <div class="progress-fill" id="tracker-nutrition-bar" style="width:0%;"></div>
+              </div>
+              <p class="nutrition-disclaimer">
+                *Optimal performance requires precise fueling. Maintain a consistency rate above 80% to maximize metabolic adaptation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weight History -->
+        <div class="card">
+          <p class="card-title" style="margin-bottom:1rem;">Weight History</p>
+          <div id="weight-log-list" class="grid-auto scrollbar-hide" style="max-height:220px;overflow-y:auto;gap:0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        HABITS TAB
+        ==================================================== -->
+      <div id="tab-habits" class="tab-panel section-gap">
+        <div class="habits-page-head">
+          <div>
+            <h2 class="section-heading">Daily Habits</h2>
+            <p class="habits-subtitle">Consistency is the ultimate performance multiplier</p>
+          </div>
+          <div class="tracker-status-block">
+            <p class="tracker-status-label">Current Status</p>
+            <p class="tracker-status-day" id="habits-day-label">Day 14</p>
+          </div>
+        </div>
+
+        <!-- Power Rank -->
+        <div class="card power-rank-card">
+          <div class="power-rank-icon">
+            <i data-lucide="trophy" width="28" height="28"></i>
+          </div>
+          <div>
+            <p class="power-rank-title">Power Rank</p>
+            <p class="power-rank-name" id="habits-rank-name">Initiate</p>
+            <p class="power-rank-meta">
+              Total accumulation: <strong id="habits-total-pts">0</strong> power points<br />
+              <span id="habits-next-badge">Next badge: Elite at 750 pts</span>
+            </p>
+          </div>
+          <div class="badge-ladder" id="habits-badge-ladder"></div>
+        </div>
+
+        <!-- Habit cards -->
+        <div id="habits-container" class="habits-grid-2"></div>
+
+        <!-- 30-Day Consistency Map (synced with cards above) -->
+        <div class="card consistency-map-card">
+          <p class="consistency-map-heading">30-Day Consistency Map</p>
+          <div class="consistency-map-scroll scrollbar-hide" id="habits-consistency-scroll">
+            <table class="consistency-map" id="habits-consistency-map" role="grid" aria-label="30-day habit consistency"></table>
+          </div>
+        </div>
+
+        <!-- Mood tracker -->
+        <div class="card">
+          <p class="card-title" style="margin-bottom:0.75rem;">Today's Mood</p>
+          <div class="mood-grid" id="mood-grid"></div>
+        </div>
+      </div>
+
+      <!-- ====================================================
+        PROFILE TAB
+        ==================================================== -->
+      <div id="tab-profile" class="tab-panel section-gap">
+        <div class="flex items-center" style="gap:2rem;flex-wrap:wrap;">
+          <div style="position:relative;">
+            <div style="width:112px;height:112px;border-radius:1rem;overflow:hidden;border:4px solid rgba(255,255,255,0.05);background:var(--color-surface-container-highest);display:flex;align-items:center;justify-content:center;color:var(--color-on-surface-variant);">
+              <i data-lucide="user" width="64" height="64" id="profile-icon"></i>
+              <img id="profile-photo-img" src="" alt="Profile" style="display:none;width:100%;height:100%;object-fit:cover;" referrerpolicy="no-referrer" />
+            </div>
+            <label style="position:absolute;bottom:-8px;right:-8px;background:var(--color-primary);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--color-surface);">
+              <i data-lucide="camera" width="14" height="14" style="color:#000;"></i>
+              <input type="file" id="profile-photo-input" accept="image/*" style="display:none;" />
+            </label>
+          </div>
+          <div>
+            <h2 class="section-heading">Athlete Profile</h2>
+            <p class="section-sub" id="profile-day-status">Day 1</p>
+          </div>
+        </div>
+
+        <div class="grid-3" style="gap:1.5rem;">
+          <!-- Biometrics -->
+          <div class="card flex flex-col" style="gap:1rem;">
+            <p class="card-title">Biometrics</p>
+            <div class="form-group">
+              <label class="form-label">Athlete Name</label>
+              <input type="text" id="profile-name" class="form-input" placeholder="Enter your name" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="profile-weight" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" id="profile-height" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input type="number" id="profile-age" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sex</label>
+              <select id="profile-sex" class="form-input">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Program -->
+          <div class="card flex flex-col" style="gap:1rem;">
+            <p class="card-title">Program</p>
+            <div class="form-group">
+              <label class="form-label">Activity Level</label>
+              <select id="profile-activity" class="form-input">
+                <option value="Sedentary">Sedentary</option>
+                <option value="Lightly Active">Lightly Active</option>
+                <option value="Moderately Active">Moderately Active</option>
+                <option value="Very Active">Very Active</option>
+                <option value="Elite Athlete">Elite Athlete</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Goal</label>
+              <select id="profile-goal" class="form-input">
+                <option value="lose">Fat Loss / Definition</option>
+                <option value="gain">Hypertrophy / Power</option>
+                <option value="health">Endurance / Longevity</option>
+              </select>
+            </div>
+            <button id="profile-save-btn" class="btn btn-primary mt-4">Save Profile</button>
+            <button id="profile-logout-btn" class="btn btn-outline" style="gap:0.5rem;">
+              <i data-lucide="log-out" width="14" height="14"></i> Logout
+            </button>
+          </div>
+
+          <!-- Stats summary -->
+          <div class="card flex flex-col" style="gap:1rem;">
+            <p class="card-title">Performance Summary</p>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="flex justify-between items-center">
+                <span class="text-xxs text-muted uppercase tracking-widest">BMI</span>
+                <span style="font-size:1rem;font-weight:900;color:var(--color-primary);" id="profile-bmi">—</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-xxs text-muted uppercase tracking-widest">Streak</span>
+                <span style="font-size:1rem;font-weight:900;" id="profile-streak">0 days</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-xxs text-muted uppercase tracking-widest">Points</span>
+                <span style="font-size:1rem;font-weight:900;" id="profile-points">0</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-xxs text-muted uppercase tracking-widest">Rank</span>
+                <span style="font-size:1rem;font-weight:900;color:var(--color-primary);" id="profile-rank">Initiate</span>
+              </div>
+            </div>
+            <button id="profile-delete-btn" class="btn btn-danger btn-sm" style="margin-top:1rem;gap:0.5rem;">
+              <i data-lucide="trash-2" width="14" height="14"></i> Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main><!-- end main-content -->
+  </div><!-- end app-layout -->
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-nav">
+    <button class="mobile-nav-btn active" data-tab="home">
+      <i data-lucide="home" width="20" height="20"></i>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="workouts">
+      <i data-lucide="dumbbell" width="20" height="20"></i>
+      <span>Workouts</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="tracker">
+      <i data-lucide="trending-up" width="20" height="20"></i>
+      <span>Tracker</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="habits">
+      <i data-lucide="target" width="20" height="20"></i>
+      <span>Habits</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="profile">
+      <i data-lucide="user" width="20" height="20"></i>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">SUNSTONE</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Support</a>
+      <a href="#">Contact</a>
+    </div>
+    <p class="footer-copy">© 2026 Kinetic Precision. All Rights Reserved.</p>
+  </footer>
+
+  <!-- SETTINGS DRAWER -->
+  <div class="drawer-overlay" id="settings-overlay"></div>
+  <div class="drawer" id="settings-drawer">
+    <div class="drawer-header">
+      <h2>Settings</h2>
+      <button class="icon-btn" id="settings-close">
+        <i data-lucide="x" width="20" height="20"></i>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-section">
+        <h3>Appearance</h3>
+        <div class="toggle-wrap">
+          <div class="flex items-center gap-3">
+            <i data-lucide="moon" width="18" height="18" style="color:var(--color-primary);"></i>
+            <span class="text-xs font-bold uppercase tracking-widest">Dark Mode</span>
+          </div>
+          <button class="toggle on" id="theme-toggle">
+            <div class="toggle-thumb"></div>
+          </button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3>Account Security</h3>
+        <div class="flex flex-col gap-2">
+          <button class="btn btn-outline btn-sm btn-full" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:0.75rem;"><i data-lucide="lock" width="16" height="16"></i> Change Password</span>
+            <i data-lucide="chevron-right" width="16" height="16"></i>
+          </button>
+          <button class="btn btn-outline btn-sm btn-full" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:0.75rem;"><i data-lucide="shield" width="16" height="16"></i> Two-Factor Auth</span>
+            <span style="font-size:0.5rem;font-weight:900;color:var(--color-on-surface-variant);background:var(--color-surface-container-highest);padding:2px 8px;border-radius:4px;">DISABLED</span>
+          </button>
+        </div>
+      </div>
+      <div class="drawer-section" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:1.5rem;">
+        <h3 style="color:#f87171;">Danger Zone</h3>
+        <button class="btn btn-danger btn-sm btn-full" id="settings-delete-btn" style="gap:0.5rem;">
+          <i data-lucide="trash-2" width="14" height="14"></i> Delete Account
+        </button>
+      </div>
+    </div>
+    <div style="padding:1.5rem;border-top:1px solid rgba(255,255,255,0.05);">
+      <p style="font-size:0.5rem;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;text-align:center;color:var(--color-on-surface-variant);">Voltage Elite v2.4.0</p>
+    </div>
+  </div>
+
+  <!-- MACRO OVERRIDE MODAL -->
+  <div class="modal-overlay" id="macro-modal">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-glow"></div>
+      <button class="modal-close" id="macro-modal-close">
+        <i data-lucide="x" width="20" height="20"></i>
+      </button>
+      <h2>Override Macros</h2>
+      <div class="grid-2" style="gap:1rem;margin-bottom:1.5rem;position:relative;z-index:1;">
+        <div class="form-group">
+          <label class="form-label">Calories</label>
+          <input type="number" id="override-cal" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Protein (g)</label>
+          <input type="number" id="override-p" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Carbs (g)</label>
+          <input type="number" id="override-c" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fat (g)</label>
+          <input type="number" id="override-f" class="form-input" />
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label class="form-label">Hydration (L)</label>
+          <input type="number" step="0.1" id="override-w" class="form-input" />
+        </div>
+      </div>
+      <div class="flex gap-3" style="position:relative;z-index:1;">
+        <button id="macro-reset-btn" class="btn btn-outline" style="flex:1;">Reset to Auto</button>
+        <button id="macro-save-btn" class="btn btn-primary" style="flex:1;">Apply Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHATBOT FAB + WINDOW -->
+  <button class="chatbot-fab" id="chatbot-fab" title="Ask Tito">
+    <i data-lucide="message-square" width="24" height="24"></i>
+  </button>
+
+  <div class="chatbot-window" id="chatbot-window">
+    <div class="chatbot-header">
+      <div class="chatbot-title">
+        <i data-lucide="zap" width="16" height="16" style="color:var(--color-primary);"></i>
+        Tito
+      </div>
+      <button class="chatbot-close" id="chatbot-close">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="chatbot-messages scrollbar-hide" id="chatbot-messages"></div>
+    <div class="chatbot-input-area">
+      <textarea
+        class="chatbot-input scrollbar-hide"
+        id="chatbot-input"
+        rows="1"
+        placeholder="Ask Tito..."
+      ></textarea>
+      <button class="chatbot-send" id="chatbot-send">
+        <i data-lucide="send" width="16" height="16"></i>
+      </button>
+    </div>
+  </div>
+
+</div><!-- end main-app -->
+
+<!-- Lucide must load before script.js (icons used during auth / boot) -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<!-- CONFIG (must come before script.js) -->
+<script src="config.js"></script>
+<!-- Main JS -->
+<script src="script.js"></script>
+</body>
+</html>

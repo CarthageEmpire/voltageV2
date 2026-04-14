@@ -1,0 +1,53 @@
+/**
+ * ============================================================
+ *  VOLTAGE — config.js
+ *  Frontend configuration file.
+ *
+ *  HOW TO USE:
+ *  1. Copy values from your .env file into this file manually.
+ *  2. Never commit this file with real keys to a public repo.
+ *     Add config.js to your .gitignore if needed.
+ *  ============================================================
+ *
+ *  SECURITY NOTICE:
+ *  API keys placed in frontend JS are visible to anyone who
+ *  views the page source. To limit abuse:
+ *    - Restrict your Firebase API key to specific domains in
+ *      Firebase Console > Project Settings > API restrictions.
+ *    - Restrict your Gemini API key in Google AI Studio /
+ *      Google Cloud Console under API restrictions.
+ *    - Set Firestore Security Rules to allow only authenticated
+ *      users to read/write their own data.
+ */
+
+const CONFIG = {
+  // ----------------------------------------------------------
+  // AI provider settings
+  // Powered by Groq via the OpenAI-compatible chat endpoint.
+  // Get your free key at: https://console.groq.com
+  // Paste it below as AI_API_KEY.
+  // ----------------------------------------------------------
+  AI_API_KEY: "your_groq_api_key_here",
+  AI_MODEL: "llama-3.3-70b-versatile", 
+
+  // ----------------------------------------------------------
+  // Firebase Configuration
+  // From .env: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, etc. → paste into FIREBASE below.
+  // All values must come from the SAME Firebase project (Console → Project settings).
+  // Google sign-in: enable the Google provider (Authentication → Sign-in method).
+  // Add your hosting domain under Authentication → Settings → Authorized domains.
+  //
+  // firestoreDatabaseId: omit or use "(default)" — this app uses the default Firestore
+  // database via the compat SDK. Named databases need the modular SDK.
+  // ----------------------------------------------------------
+  FIREBASE: {
+    apiKey: "AIzaSyA4zZayAZmN9bFjzozhoXaZT0CFdbkUtQ0",
+    authDomain: "gen-lang-client-0237696078.firebaseapp.com",
+    projectId: "gen-lang-client-0237696078",
+    storageBucket: "gen-lang-client-0237696078.firebasestorage.app",
+    messagingSenderId: "486937302900",
+    appId: "1:486937302900:web:a38aa9abd314ece232fe21",
+    measurementId: "",
+    firestoreDatabaseId: ""
+  }
+};
