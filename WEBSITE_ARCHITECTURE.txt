@@ -1,0 +1,236 @@
+SUNSTONE (VOLTAGE) WEBSITE ARCHITECTURE OVERVIEW
+================================================
+
+1) HIGH-LEVEL SYSTEM SUMMARY
+----------------------------
+Sunstone is a single-page web application (SPA) built with static frontend files.
+It uses Firebase for authentication and persistent user data, and optionally uses
+an edge backend proxy (Cloudflare Worker) for AI chat requests to Groq.
+
+Core runtime pieces:
+- Frontend UI + client logic: index.html, style.css, script.js
+- Frontend configuration: config.js (+ local override in config.local.js)
+- Backend (optional for AI): proxy/cloudflare-worker.js
+- Database + auth service: Firebase Authentication + Cloud Firestore
+
+
+2) TECHNOLOGIES USED
+--------------------
+Frontend:
+- HTML5: page structure and app shells (landing, auth, dashboard, tabs, modals)
+- CSS3: responsive layout, components, theming, effects
+- Vanilla JavaScript (ES6+): app state, UI rendering, event handling, Firebase and AI logic
+- Chart.js (CDN): analytics charts (weight and sleep trends)
+- Lucide Icons (CDN): icon rendering throughout UI
+
+Cloud services and data:
+- Firebase App SDK (compat)
+- Firebase Authentication (Email/Password + Google sign-in)
+- Cloud Firestore (NoSQL document database)
+
+AI stack:
+- Groq OpenAI-compatible chat completion API
+- Cloudflare Worker (optional) as secure server-side proxy for Groq API key
+
+Deployment model:
+- Static hosting for frontend (local static server or GitHub Pages)
+- Optional serverless edge function for AI requests (Cloudflare Worker)
+
+
+3) ROLE OF EACH COMPONENT
+-------------------------
+A) Frontend (Browser)
+- Renders all screens: loading, landing, auth, main dashboard tabs.
+- Maintains in-memory app state object (user, profile, logs, habits, charts, etc.).
+- Handles all user interactions (login, logging workouts, tracking sleep, editing profile).
+- Calls Firebase Auth for sign-in/out/session state.
+- Subscribes to Firestore collections/docs for real-time updates.
+- Writes profile and log data into Firestore when user is authenticated.
+- Runs in guest mode without database persistence (session-only in-memory behavior).
+
+B) Backend (Cloudflare Worker, optional)
+- Receives POST requests from frontend for AI chat.
+- Reads GROQ_API_KEY from secure worker environment variables.
+- Forwards request to Groq chat completions endpoint.
+- Returns sanitized JSON response to frontend.
+- Prevents exposing production AI key in client-side code.
+
+C) Database and Identity (Firebase)
+- Firebase Auth identifies users and manages session state.
+- Firestore stores user profile and time-series logs.
+- Real-time listeners push updates to frontend when data changes.
+- Security rules (recommended) should enforce per-user access boundaries.
+
+
+4) FRONTEND ARCHITECTURE DETAILS
+--------------------------------
+A) UI Structure
+- index.html defines major app shells and tab panels:
+  - Landing page
+  - Auth page (sign in/register/google/guest)
+  - Main app tabs: Home, Workouts, Nutrition, Tracker, Habits, Profile
+  - Modals/drawers: initialization, settings, macro override
+  - Floating AI chatbot panel
+
+B) State Management
+- script.js stores app state in a single in-memory state object.
+- Rendering functions update the DOM for each tab/module.
+- Event listeners trigger state mutation, database writes, and rerenders.
+
+C) Real-Time Behavior
+- When authenticated, Firestore onSnapshot listeners hydrate state and keep it synced.
+- Charts and KPI cards rerender when snapshot data changes.
+
+D) Guest Mode
+- If not authenticated and user chooses Guest, app still functions.
+- Logs/habits are updated in memory only.
+- Data is not persisted to Firestore.
+
+
+5) BACKEND ARCHITECTURE DETAILS (AI PROXY)
+-------------------------------------------
+The repository includes proxy/cloudflare-worker.js.
+
+Request flow:
+1. Frontend sends POST payload containing model and prompt/messages.
+2. Worker validates method, applies CORS, reads secure GROQ_API_KEY.
+3. Worker forwards to https://api.groq.com/openai/v1/chat/completions.
+4. Worker returns simplified JSON containing reply (or error).
+
+Why it exists:
+- Production-safe key handling. Without the proxy, exposing API keys in frontend is risky.
+- Unified place for CORS and upstream error handling.
+
+Fallback behavior in frontend:
+- If proxy URL is missing and no valid local key exists, chatbot runs local fallback replies.
+
+
+6) DATABASE DESIGN (FIRESTORE)
+------------------------------
+Top-level user document:
+- users/{uid}
+
+Typical fields saved in users/{uid}:
+- name
+- email
+- goal
+- startWeight
+- height
+- age
+- sex
+- activityLevel
+- photoURL
+- habits (object map)
+- habitPoints (object map)
+- mood (object map)
+- manualMacros
+- customExerciseData
+- customNutritionData
+- createdAt (server timestamp)
+
+Subcollections used for time-series logs:
+- users/{uid}/weightLogs
+  - weight
+  - date (server timestamp)
+  - userId
+- users/{uid}/sleepLogs
+  - hours
+  - date
+  - userId
+- users/{uid}/gymLogs
+  - completed
+  - date
+  - userId
+- users/{uid}/nutritionLogs
+  - reached
+  - date
+  - userId
+
+Data access pattern:
+- Reads are mostly real-time subscriptions ordered by date.
+- Writes are event-driven from UI actions.
+- In several flows, app updates today's record if one exists; otherwise creates a new document.
+
+
+7) END-TO-END DATA FLOW
+-----------------------
+A) Authentication flow
+1. User opens app -> frontend initializes Firebase SDK.
+2. Firebase auth state listener runs.
+3. If authenticated:
+   - frontend shows main app
+   - frontend subscribes to Firestore user doc + log subcollections
+4. If not authenticated:
+   - user stays on landing/auth OR enters guest mode
+
+B) Profile/setup flow
+1. User submits setup/profile form.
+2. Frontend updates local state.
+3. If authenticated, frontend writes merged updates to users/{uid}.
+4. Snapshot listener receives data and UI reflects saved values.
+
+C) Daily tracking flow (weight/sleep/workout/nutrition)
+1. User clicks a log action.
+2. Frontend validates and updates local state.
+3. If authenticated, frontend writes to appropriate subcollection.
+4. Firestore snapshot pushes latest data back to frontend.
+5. Charts, streaks, points, and summaries rerender.
+
+D) Habit and mood flow
+1. User toggles habit or mood.
+2. Frontend recomputes points/stats.
+3. If authenticated, writes habits/habitPoints/mood to users/{uid}.
+4. Tracker and habits views stay synchronized.
+
+E) AI chatbot flow
+Two operation modes:
+- Secure mode (recommended): frontend -> Cloudflare Worker -> Groq -> Worker -> frontend
+- Direct mode (local/dev): frontend -> Groq directly (using local key)
+
+If configuration is missing or invalid:
+- chatbot shows system notice and returns local fallback coaching text.
+
+
+8) INTERACTION MODEL BETWEEN COMPONENTS
+---------------------------------------
+Frontend <-> Firebase Auth:
+- Frontend delegates identity/session lifecycle to Firebase Auth.
+
+Frontend <-> Firestore:
+- Frontend performs CRUD-like updates and listens in real time.
+- Firestore is the source of truth for authenticated users.
+
+Frontend <-> Cloudflare Worker (optional):
+- Frontend sends AI prompt payload to worker endpoint.
+- Worker securely injects secret and calls Groq.
+
+Cloudflare Worker <-> Groq API:
+- Worker acts as authenticated upstream client to Groq.
+
+Overall behavior:
+- UI is responsive through immediate local state updates.
+- Persistent consistency is achieved through Firestore writes and snapshot listeners.
+- Optional backend proxy adds secure secret management for AI.
+
+
+9) HOW EVERYTHING WORKS TOGETHER
+--------------------------------
+The website functions as a client-heavy SPA with managed cloud services:
+- The frontend is responsible for rendering, interaction logic, and orchestration.
+- Firebase Auth controls who the user is.
+- Firestore persists user-specific fitness data and streams updates back in real time.
+- Cloudflare Worker optionally secures AI requests by keeping Groq secrets off the client.
+
+This combination gives:
+- Fast UI updates (client state + direct event handling)
+- Persistent multi-session user data (Firestore)
+- Real-time synchronization (snapshot listeners)
+- Optional secure AI integration for production (worker proxy)
+
+
+10) PRACTICAL OPERATING NOTES
+-----------------------------
+- For production, keep frontend config placeholders committed and real secrets out of git.
+- Use strict Firestore Security Rules so users can only access their own documents.
+- Enable required Firebase auth providers (Email/Password, Google) and authorized domains.
+- Prefer AI proxy mode in public deployments to avoid exposing Groq credentials.

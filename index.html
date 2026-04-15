@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sunstone - Fitness Dashboard</title>
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="style.css" />
 
   <!-- Firebase v10 modular SDK via CDN (compat mode for simplicity) -->
@@ -53,7 +54,7 @@
 
     <!-- Login Form -->
     <div id="auth-login-form" class="auth-form-panel">
-      <div class="flex flex-col gap-3">
+      <form class="flex flex-col gap-3" onsubmit="return false;">
         <div class="form-group">
           <label class="form-label">Email</label>
           <input type="email" id="login-email" class="form-input" placeholder="athlete@voltage.io" />
@@ -63,13 +64,13 @@
           <input type="password" id="login-password" class="form-input" placeholder="••••••••" />
         </div>
         <div id="login-error" style="color:#f87171;font-size:0.7rem;display:none;"></div>
-        <button id="login-btn" class="btn btn-primary btn-full mt-2">Sign In</button>
-      </div>
+        <button type="button" id="login-btn" class="btn btn-primary btn-full mt-2">Sign In</button>
+      </form>
     </div>
 
     <!-- Register Form -->
     <div id="auth-register-form" class="auth-form-panel" style="display:none;">
-      <div class="flex flex-col gap-3">
+      <form class="flex flex-col gap-3" onsubmit="return false;">
         <div class="form-group">
           <label class="form-label">Display Name</label>
           <input type="text" id="register-name" class="form-input" placeholder="Your name" />
@@ -83,8 +84,8 @@
           <input type="password" id="register-password" class="form-input" placeholder="Min. 6 characters" />
         </div>
         <div id="register-error" style="color:#f87171;font-size:0.7rem;display:none;"></div>
-        <button id="register-btn" class="btn btn-primary btn-full mt-2">Create Account</button>
-      </div>
+        <button type="button" id="register-btn" class="btn btn-primary btn-full mt-2">Create Account</button>
+      </form>
     </div>
 
     <div class="auth-divider"><hr /><span>or</span><hr /></div>
@@ -902,7 +903,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <!-- CONFIG (must come before script.js) -->
 <script src="config.js"></script>
-<script src="config.local.js"></script>
+<script src="config.local.js" defer onerror="console.warn('Local config not found; using defaults.')"></script>
 <!-- Main JS -->
 <script src="script.js"></script>
 </body>
