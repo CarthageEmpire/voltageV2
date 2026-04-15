@@ -1611,6 +1611,9 @@ User question: ${text}`;
     if (typeof CONFIG === 'undefined' || (!getProxyUrl() && isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
       pushChatMessage('system', 'Set AI_PROXY_URL for public deployment, or add your Groq key to config.local.js for local development.');
     }
+
+    pushChatMessage('system', 'Using local fallback coach response due to AI connectivity issue.');
+    pushChatMessage('bot', buildFallbackCoachReply(text));
   }
 }
 

@@ -903,7 +903,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <!-- CONFIG (must come before script.js) -->
 <script src="config.js"></script>
-<script src="config.local.js" defer onerror="console.warn('Local config not found; using defaults.')"></script>
+<script src="config.local.js" onerror="console.warn('Local config not found; using defaults.')"></script>
 <!-- Main JS -->
 <script src="script.js"></script>
 </body>
