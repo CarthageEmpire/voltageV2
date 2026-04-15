@@ -31,7 +31,7 @@ const CONFIG = {
   // ----------------------------------------------------------
   AI_API_KEY: "your_groq_api_key_here",
   AI_MODEL: "llama-3.3-70b-versatile", 
-  AI_PROXY_URL: "",
+  AI_PROXY_URL: "https://voltage-groq-proxy.your-subdomain.workers.dev",
 
   // ----------------------------------------------------------
   // Firebase Configuration
