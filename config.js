@@ -31,7 +31,7 @@ const CONFIG = {
   // ----------------------------------------------------------
  AI_API_KEY: "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",
  
-  AI_PROXY_URL: "https://lively-band-ab58.midou-skhiri000.workers.dev",
+  AI_PROXY_URL: null,
 
   // ----------------------------------------------------------
   // Firebase Configuration
