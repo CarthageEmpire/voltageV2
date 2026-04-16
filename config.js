@@ -30,27 +30,25 @@ const CONFIG = {
   // and keep AI_API_KEY as a placeholder in this file.
   // ----------------------------------------------------------
   AI_API_KEY: "your_groq_api_key_here",
-  AI_MODEL: "llama-3.3-70b-versatile", 
+  AI_MODEL: "llama-3.3-70b-versatile",
   AI_PROXY_URL: "",
 
   // ----------------------------------------------------------
   // Firebase Configuration
-  // From .env: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, etc. → paste into FIREBASE below.
-  // All values must come from the SAME Firebase project (Console → Project settings).
-  // Google sign-in: enable the Google provider (Authentication → Sign-in method).
-  // Add your hosting domain under Authentication → Settings → Authorized domains.
+  // From .env: FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, etc. -> paste into FIREBASE below.
+  // All values must come from the SAME Firebase project (Console -> Project settings).
+  // Google sign-in: enable the Google provider (Authentication -> Sign-in method).
+  // Add your hosting domain under Authentication -> Settings -> Authorized domains.
   //
-  // firestoreDatabaseId: omit or use "(default)" — this app uses the default Firestore
+  // firestoreDatabaseId: omit or use "(default)" - this app uses the default Firestore
   // database via the compat SDK. Named databases need the modular SDK.
   // ----------------------------------------------------------
   FIREBASE: {
-    apiKey: "AIzaSyA4zZayAZmN9bFjzozhoXaZT0CFdbkUtQ0",
-    authDomain: "gen-lang-client-0237696078.firebaseapp.com",
-    projectId: "gen-lang-client-0237696078",
-    storageBucket: "gen-lang-client-0237696078.firebasestorage.app",
-    messagingSenderId: "486937302900",
-    appId: "1:486937302900:web:a38aa9abd314ece232fe21",
-    measurementId: "",
-    firestoreDatabaseId: ""
+  apiKey: "AIzaSyD8wlQKmUCTENHoPbb0Leq9Z1luZUfNN6M",
+  authDomain: "gen-lang-client-0476894197.firebaseapp.com",
+  projectId: "gen-lang-client-0476894197",
+  storageBucket: "gen-lang-client-0476894197.firebasestorage.app",
+  messagingSenderId: "509380570266",
+  appId: "1:509380570266:web:f22eb02c01cd5b51ac0323"
   }
 };

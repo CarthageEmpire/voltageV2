@@ -1,6 +1,7 @@
 # Local secrets and env
 .env
 config.local.js
+node_modules/
 # Editor/system noise
 .DS_Store
 Thumbs.db
