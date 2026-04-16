@@ -1916,6 +1916,15 @@ function bootApp() {
 
 /* ---- DOM Ready ---- */
 document.addEventListener('DOMContentLoaded', () => {
+  // Treat untyped buttons as UI actions, not form submissions.
+  document.querySelectorAll('button:not([type])').forEach((button) => {
+    button.type = 'button';
+  });
+
+  // Placeholder links should not navigate the page.
+  document.querySelectorAll('a[href="#"]').forEach((link) => {
+    link.addEventListener('click', (e) => e.preventDefault());
+  });
 
   // Landing page
   document.getElementById('get-started-btn')?.addEventListener('click', () => showScreen('auth-page'));
