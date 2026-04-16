@@ -29,9 +29,9 @@ const CONFIG = {
   // For public deployment, set AI_PROXY_URL to your serverless proxy
   // and keep AI_API_KEY as a placeholder in this file.
   // ----------------------------------------------------------
-  AI_API_KEY: "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",
+ AI_API_KEY: "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",
  
-  AI_PROXY_URL: "https://jolly-union-0159.midou-skhiri000.workers.dev",
+  AI_PROXY_URL: null,
 
   // ----------------------------------------------------------
   // Firebase Configuration
