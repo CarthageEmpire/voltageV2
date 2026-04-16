@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+    <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FIXES -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
+
   <title>Sunstone - Fitness Dashboard</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Firebase v10 modular SDK via CDN (compat mode for simplicity) -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-  <!-- Chart.js for data charts -->
+  <!-- Charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
@@ -899,12 +904,23 @@
 
 </div><!-- end main-app -->
 
-<!-- Lucide must load before script.js (icons used during auth / boot) -->
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<!-- CONFIG (must come before script.js) -->
+<!-- Lucide -->
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- Config -->
 <script src="config.js"></script>
 <script src="config.local.js" onerror="console.warn('Local config not found; using defaults.')"></script>
-<!-- Main JS -->
-<script src="script.js"></script>
+
+<!-- Main -->
+<script src="script.js" defer></script>
+
+<!-- Init icons -->
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  });
+</script>
 </body>
 </html>

@@ -29,9 +29,9 @@ const CONFIG = {
   // For public deployment, set AI_PROXY_URL to your serverless proxy
   // and keep AI_API_KEY as a placeholder in this file.
   // ----------------------------------------------------------
-  AI_API_KEY: "your_groq_api_key_here",
-  AI_MODEL: "llama-3.3-70b-versatile",
-  AI_PROXY_URL: "",
+  AI_API_KEY: "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",
+ 
+  AI_PROXY_URL: "https://jolly-union-0159.midou-skhiri000.workers.dev",
 
   // ----------------------------------------------------------
   // Firebase Configuration
