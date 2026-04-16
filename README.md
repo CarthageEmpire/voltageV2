@@ -25,7 +25,7 @@ For public deployment, do not expose your Groq key in frontend files.
 1. Deploy a small serverless proxy using `proxy/cloudflare-worker.js`.
 2. Set your secret in the worker environment (`GROQ_API_KEY`).
 3. Put your worker URL in `config.js` as `AI_PROXY_URL`.
-4. Keep `AI_API_KEY` in `config.js` as a placeholder.
+4. Keep `AI_API_KEY` in `config.js` as a placeholder and use `config.local.js` only for local testing.
 
 If `AI_PROXY_URL` is empty and no local key is present, Tito runs in demo fallback mode.
 

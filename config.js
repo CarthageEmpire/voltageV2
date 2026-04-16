@@ -14,8 +14,7 @@
  *  views the page source. To limit abuse:
  *    - Restrict your Firebase API key to specific domains in
  *      Firebase Console > Project Settings > API restrictions.
- *    - Restrict your Gemini API key in Google AI Studio /
- *      Google Cloud Console under API restrictions.
+ *    - Keep Groq secrets in a server-side proxy for public deployments.
  *    - Set Firestore Security Rules to allow only authenticated
  *      users to read/write their own data.
  */
@@ -24,13 +23,12 @@ const CONFIG = {
   // ----------------------------------------------------------
   // AI provider settings
   // Powered by Groq via the OpenAI-compatible chat endpoint.
-  // Get your free key at: https://console.groq.com
-  // Paste it below as AI_API_KEY.
   // For public deployment, set AI_PROXY_URL to your serverless proxy
   // and keep AI_API_KEY as a placeholder in this file.
+  // For local development, put the real AI_API_KEY in config.local.js.
   // ----------------------------------------------------------
- AI_API_KEY: "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",
- 
+  AI_API_KEY: "your_groq_api_key_here",
+
   AI_PROXY_URL: null,
 
   // ----------------------------------------------------------

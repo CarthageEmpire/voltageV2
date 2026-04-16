@@ -198,6 +198,20 @@ const state = {
   sleepChartInstance: null,
 };
 
+const DEFAULT_PROFILE_STATE = {
+  weight: 75,
+  height: 175,
+  age: 25,
+  sex: 'Male',
+  activityLevel: 'Moderately Active',
+  goal: 'lose',
+  athleteName: '',
+  profilePhoto: null,
+};
+
+let hydrationReminderIntervalId = null;
+let aiNotificationTimeoutId = null;
+
 /* ============================================================
    3. FIREBASE INITIALISATION
    ============================================================ */
@@ -313,6 +327,14 @@ function handleLogout() {
 function resetState() {
   state.user              = null;
   state.isGuestMode       = false;
+  state.weight            = DEFAULT_PROFILE_STATE.weight;
+  state.height            = DEFAULT_PROFILE_STATE.height;
+  state.age               = DEFAULT_PROFILE_STATE.age;
+  state.sex               = DEFAULT_PROFILE_STATE.sex;
+  state.activityLevel     = DEFAULT_PROFILE_STATE.activityLevel;
+  state.goal              = DEFAULT_PROFILE_STATE.goal;
+  state.athleteName       = DEFAULT_PROFILE_STATE.athleteName;
+  state.profilePhoto      = DEFAULT_PROFILE_STATE.profilePhoto;
   state.isGenerated       = false;
   state.isProfileLoaded   = false;
   state.welcomeSent       = false;
@@ -327,8 +349,26 @@ function resetState() {
   state.notifications     = [];
   state.chatMessages      = [];
   state.manualMacros      = null;
+  state.activeTab         = 'home';
   state.customExerciseData  = JSON.parse(JSON.stringify(EXERCISE_DATA));
   state.customNutritionData = JSON.parse(JSON.stringify(NUTRITION_DATA));
+
+  if (aiNotificationTimeoutId) {
+    clearTimeout(aiNotificationTimeoutId);
+    aiNotificationTimeoutId = null;
+  }
+  if (hydrationReminderIntervalId) {
+    clearInterval(hydrationReminderIntervalId);
+    hydrationReminderIntervalId = null;
+  }
+
+  const avatarImg  = document.getElementById('topbar-avatar-img');
+  const avatarIcon = document.getElementById('topbar-avatar-icon');
+  if (avatarImg) {
+    avatarImg.src = '';
+    avatarImg.style.display = 'none';
+  }
+  if (avatarIcon) avatarIcon.style.display = '';
 }
 
 /* ============================================================
@@ -1888,9 +1928,11 @@ function bootApp() {
   }
 
   if (state.isGenerated && !state.aiNotifSent) {
-    setTimeout(() => {
+    if (aiNotificationTimeoutId) clearTimeout(aiNotificationTimeoutId);
+    aiNotificationTimeoutId = setTimeout(() => {
       addNotification('Need optimization tips? Ask Tito for a personalized strategy.');
       state.aiNotifSent = true;
+      aiNotificationTimeoutId = null;
     }, 5000);
   }
 
@@ -1905,7 +1947,9 @@ function bootApp() {
   if (state.isGenerated) renderTrackerTab();
   refreshIcons();
 
-  setInterval(() => {
+  if (hydrationReminderIntervalId) return;
+
+  hydrationReminderIntervalId = setInterval(() => {
     const now = new Date();
     const h = now.getHours(), m = now.getMinutes();
     if ([[10,0],[14,0],[18,0],[21,0]].some(([rh,rm]) => rh===h && rm===m)) {
