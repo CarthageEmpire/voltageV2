@@ -2072,6 +2072,8 @@ function bootApp() {
 
   if (state.isProfileLoaded && !state.isGenerated) {
     showInitModal(false);
+  } else if (state.isGenerated) {
+    hideInitModal();
   }
 
   if (state.isGenerated && !state.welcomeSent) {
