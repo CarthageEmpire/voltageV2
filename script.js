@@ -478,6 +478,13 @@ async function loadFirestoreData() {
 
   debugLog('Starting Firestore hydration', { uid });
 
+  saveProfile({
+    email: user.email || '',
+    name: user.displayName || '',
+    photoURL: user.photoURL || '',
+    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { label: 'session metadata sync' });
+
   const unsubUser = userRef.onSnapshot((snap) => {
     debugLog('User document snapshot received', {
       uid,
@@ -496,14 +503,6 @@ async function loadFirestoreData() {
     } else {
       const existingData = snap.data() || {};
       applyUserProfile(existingData, user);
-      userRef.set({
-        email: user.email || existingData.email || '',
-        name: existingData.name || user.displayName || '',
-        photoURL: existingData.photoURL || user.photoURL || '',
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }).catch((err) => {
-        console.error('[firestore] Failed to refresh lastLoginAt:', err);
-      });
     }
 
     state.isProfileLoaded = true;
