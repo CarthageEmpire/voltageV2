@@ -1,0 +1,30 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="frame" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB15C"/>
+      <stop offset="1" stop-color="#FF6F3C"/>
+    </linearGradient>
+    <linearGradient id="core" x1="32" y1="13" x2="32" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3C8"/>
+      <stop offset="0.45" stop-color="#FFC96C"/>
+      <stop offset="1" stop-color="#FF7A45"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="18" y1="28" x2="46" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8F4E30"/>
+      <stop offset="1" stop-color="#2D1F1B"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="7" y="7" width="50" height="50" rx="12" fill="#141416"/>
+  <rect x="7" y="7" width="50" height="50" rx="12" stroke="url(#frame)" stroke-width="2"/>
+
+  <path d="M32 14L40 22L38 36H26L24 22L32 14Z" fill="url(#core)"/>
+  <path d="M32 14L40 22H24L32 14Z" fill="#FFF8DA"/>
+  <path d="M32 14L38 36H26L32 14Z" fill="#FFB761"/>
+
+  <path d="M18 39L23 29L29 26L32 31L35 26L41 29L46 39L40 48H24L18 39Z" fill="url(#stone)"/>
+  <path d="M24 29L28 34L25 42L20 39L24 29Z" fill="#6D402C"/>
+  <path d="M40 29L44 39L39 42L36 34L40 29Z" fill="#5B3428"/>
+
+  <path d="M32 26L28 35H31L29 42L36 32H33L35 26H32Z" fill="#FFD27A"/>
+</svg>
