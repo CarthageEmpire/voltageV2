@@ -247,24 +247,6 @@ function debugLog(message, payload) {
   console.log(`[voltage] ${message}`, payload);
 }
 
-function withTimeout(promise, ms, label) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${ms}ms`));
-    }, ms);
-
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
-}
-
 /* ============================================================
    4. AUTH LOGIC
    ============================================================ */
@@ -485,31 +467,6 @@ function attachCollectionListener(ref, label, onData) {
   });
 }
 
-async function ensureUserDocument(userRef, user) {
-  const initialSnap = await userRef.get();
-  if (!initialSnap.exists) {
-    const initialDoc = buildInitialUserDoc(user);
-    debugLog('Creating missing user document', { uid: user.uid, email: user.email || '' });
-    await userRef.set(initialDoc, { merge: true });
-    return { exists: false, data: initialDoc };
-  }
-
-  const existingData = initialSnap.data() || {};
-  await userRef.set({
-    email: user.email || existingData.email || '',
-    name: existingData.name || user.displayName || '',
-    photoURL: existingData.photoURL || user.photoURL || '',
-    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  debugLog('Loaded existing user document', {
-    uid: user.uid,
-    hasSavedProfile: hasSavedProfileData(existingData)
-  });
-
-  return { exists: true, data: existingData };
-}
-
 async function loadFirestoreData() {
   if (!state.user) return;
   unsubscribeAll();
@@ -521,27 +478,34 @@ async function loadFirestoreData() {
 
   debugLog('Starting Firestore hydration', { uid });
 
-  try {
-    const ensured = await withTimeout(
-      ensureUserDocument(userRef, user),
-      8000,
-      'Initial Firestore hydration'
-    );
-    applyUserProfile(ensured.data, user);
-    state.isProfileLoaded = true;
-    bootApp();
-  } catch (err) {
-    console.error('[firestore] Initial user hydration failed:', err);
-    state.isProfileLoaded = true;
-    state.isGenerated = false;
-    state.athleteName = user.displayName || '';
-    state.profilePhoto = user.photoURL || null;
-    bootApp();
-  }
-
   const unsubUser = userRef.onSnapshot((snap) => {
-    debugLog('User document snapshot received', { uid, exists: snap.exists });
-    applyUserProfile(snap.exists ? snap.data() : {}, user);
+    debugLog('User document snapshot received', {
+      uid,
+      exists: snap.exists,
+      fromCache: snap.metadata?.fromCache,
+      hasPendingWrites: snap.metadata?.hasPendingWrites
+    });
+
+    if (!snap.exists) {
+      const initialDoc = buildInitialUserDoc(user);
+      debugLog('Creating missing user document from snapshot path', { uid, email: user.email || '' });
+      userRef.set(initialDoc, { merge: true }).catch((err) => {
+        console.error('[firestore] Failed to create missing user document:', err);
+      });
+      applyUserProfile(initialDoc, user);
+    } else {
+      const existingData = snap.data() || {};
+      applyUserProfile(existingData, user);
+      userRef.set({
+        email: user.email || existingData.email || '',
+        name: existingData.name || user.displayName || '',
+        photoURL: existingData.photoURL || user.photoURL || '',
+        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch((err) => {
+        console.error('[firestore] Failed to refresh lastLoginAt:', err);
+      });
+    }
+
     state.isProfileLoaded = true;
     bootApp();
   }, (err) => {
@@ -602,17 +566,13 @@ function unsubscribeAll() {
 
 async function saveProfile(updates, options = {}) {
   if (!state.user) return false;
-  const { timeoutMs = 8000, label = 'profile save' } = options;
+  const { label = 'profile save' } = options;
   try {
     debugLog(`Starting ${label}`, { uid: state.user.uid, keys: Object.keys(updates || {}) });
-    await withTimeout(
-      db.doc(`users/${state.user.uid}`).set({
-        ...updates,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }),
-      timeoutMs,
-      label
-    );
+    await db.doc(`users/${state.user.uid}`).set({
+      ...updates,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
     debugLog(`Completed ${label}`, { uid: state.user.uid });
     return true;
   } catch (e) {
