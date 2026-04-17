@@ -224,12 +224,45 @@ const app  = firebase.initializeApp(CONFIG.FIREBASE);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-auth.getRedirectResult().catch(() => {});
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((err) => {
+  console.error('[auth] Failed to enable LOCAL persistence:', err);
+});
+
+auth.getRedirectResult().catch((err) => {
+  console.error('[auth] Redirect result error:', err);
+  showAuthError('login', friendlyAuthError(err?.code, err?.message));
+});
 
 function refreshIcons() {
   if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
     lucide.createIcons();
   }
+}
+
+function debugLog(message, payload) {
+  if (payload === undefined) {
+    console.log(`[voltage] ${message}`);
+    return;
+  }
+  console.log(`[voltage] ${message}`, payload);
+}
+
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
 }
 
 /* ============================================================
@@ -248,15 +281,25 @@ function showScreen(id) {
 auth.onAuthStateChanged((user) => {
   state.user = user;
   if (user) {
-    showScreen('main-app');
+    debugLog('Auth state changed: signed in', { uid: user.uid, email: user.email });
+    showScreen('loading-screen');
     state.isGuestMode = false;
-    loadFirestoreData();
+    loadFirestoreData().catch((err) => {
+      console.error('[auth] Failed to hydrate Firestore state:', err);
+      state.isProfileLoaded = true;
+      state.isGenerated = false;
+      state.athleteName = user.displayName || '';
+      state.profilePhoto = user.photoURL || null;
+      bootApp();
+    });
     refreshIcons();
   } else if (state.isGuestMode) {
+    debugLog('Auth state changed: guest mode active');
     showScreen('main-app');
     state.isProfileLoaded = true;
     refreshIcons();
   } else {
+    debugLog('Auth state changed: signed out');
     showScreen('landing-page');
     refreshIcons();
   }
@@ -311,7 +354,9 @@ function friendlyAuthError(code, fallbackMsg) {
 
 function showAuthError(form, msg) {
   const el = document.getElementById(`${form}-error`);
-  if (el) { el.textContent = msg; el.style.display = 'block'; }
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
 }
 
 function handleLogout() {
@@ -377,67 +422,175 @@ function resetState() {
 
 let firestoreUnsubs = [];
 
-function loadFirestoreData() {
+function hasSavedProfileData(data) {
+  if (!data || typeof data !== 'object') return false;
+  return [
+    data.goal,
+    data.startWeight,
+    data.height,
+    data.age,
+    data.activityLevel,
+    data.customExerciseData,
+    data.customNutritionData,
+    data.manualMacros
+  ].some(value => value !== undefined && value !== null && value !== '');
+}
+
+function buildInitialUserDoc(user) {
+  return {
+    uid: user.uid,
+    email: user.email || '',
+    name: user.displayName || '',
+    photoURL: user.photoURL || '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+function applyUserProfile(docData = {}, user = state.user) {
+  const data = docData && typeof docData === 'object' ? docData : {};
+
+  state.goal            = data.goal          || 'lose';
+  state.weight          = data.startWeight   || DEFAULT_PROFILE_STATE.weight;
+  state.height          = data.height        || DEFAULT_PROFILE_STATE.height;
+  state.age             = data.age           || DEFAULT_PROFILE_STATE.age;
+  state.sex             = data.sex           || DEFAULT_PROFILE_STATE.sex;
+  state.activityLevel   = data.activityLevel || DEFAULT_PROFILE_STATE.activityLevel;
+  state.profilePhoto    = data.photoURL      || user?.photoURL || DEFAULT_PROFILE_STATE.profilePhoto;
+  state.athleteName     = data.name          || user?.displayName || DEFAULT_PROFILE_STATE.athleteName;
+  state.isGenerated     = hasSavedProfileData(data);
+
+  state.customExerciseData  = data.customExerciseData
+    ? data.customExerciseData
+    : JSON.parse(JSON.stringify(EXERCISE_DATA));
+  state.customNutritionData = data.customNutritionData
+    ? data.customNutritionData
+    : JSON.parse(JSON.stringify(NUTRITION_DATA));
+  state.habits              = (data.habits && typeof data.habits === 'object') ? data.habits : {};
+  state.habitPoints         = (data.habitPoints && typeof data.habitPoints === 'object') ? data.habitPoints : {};
+  state.mood                = (data.mood && typeof data.mood === 'object') ? data.mood : {};
+  state.manualMacros        = data.manualMacros !== undefined ? data.manualMacros : null;
+
+  debugLog('Applied user profile state', {
+    uid: user?.uid || null,
+    isGenerated: state.isGenerated,
+    athleteName: state.athleteName,
+    hasPhoto: !!state.profilePhoto
+  });
+}
+
+function attachCollectionListener(ref, label, onData) {
+  return ref.onSnapshot(onData, (err) => {
+    console.error(`[firestore] ${label} listener error:`, err);
+  });
+}
+
+async function ensureUserDocument(userRef, user) {
+  const initialSnap = await userRef.get();
+  if (!initialSnap.exists) {
+    const initialDoc = buildInitialUserDoc(user);
+    debugLog('Creating missing user document', { uid: user.uid, email: user.email || '' });
+    await userRef.set(initialDoc, { merge: true });
+    return { exists: false, data: initialDoc };
+  }
+
+  const existingData = initialSnap.data() || {};
+  await userRef.set({
+    email: user.email || existingData.email || '',
+    name: existingData.name || user.displayName || '',
+    photoURL: existingData.photoURL || user.photoURL || '',
+    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  debugLog('Loaded existing user document', {
+    uid: user.uid,
+    hasSavedProfile: hasSavedProfileData(existingData)
+  });
+
+  return { exists: true, data: existingData };
+}
+
+async function loadFirestoreData() {
   if (!state.user) return;
   unsubscribeAll();
-  const uid = state.user.uid;
+  state.isProfileLoaded = false;
 
-  const unsubUser = db.doc(`users/${uid}`).onSnapshot(snap => {
+  const user = state.user;
+  const uid = user.uid;
+  const userRef = db.doc(`users/${uid}`);
+
+  debugLog('Starting Firestore hydration', { uid });
+
+  try {
+    const ensured = await withTimeout(
+      ensureUserDocument(userRef, user),
+      8000,
+      'Initial Firestore hydration'
+    );
+    applyUserProfile(ensured.data, user);
     state.isProfileLoaded = true;
-    if (snap.exists) {
-      const d = snap.data();
-      state.goal            = d.goal          || 'lose';
-      state.weight          = d.startWeight   || 75;
-      state.height          = d.height        || 175;
-      state.age             = d.age           || 25;
-      state.sex             = d.sex           || 'Male';
-      state.activityLevel   = d.activityLevel || 'Moderately Active';
-      state.profilePhoto    = d.photoURL      || null;
-      state.athleteName     = d.name          || state.user.displayName || '';
-      state.isGenerated     = true;
-      if (d.customExerciseData)  state.customExerciseData  = d.customExerciseData;
-      if (d.customNutritionData) state.customNutritionData = d.customNutritionData;
-      if (d.habits      && typeof d.habits      === 'object') state.habits      = d.habits;
-      if (d.habitPoints && typeof d.habitPoints === 'object') state.habitPoints = d.habitPoints;
-      if (d.mood        && typeof d.mood        === 'object') state.mood        = d.mood;
-      if (d.manualMacros !== undefined) state.manualMacros = d.manualMacros;
-    } else {
-      state.isGenerated = false;
-      state.athleteName = state.user.displayName || '';
-      if (state.user.photoURL && !state.profilePhoto) state.profilePhoto = state.user.photoURL;
-    }
     bootApp();
-  }, err => {
-    console.error('Firestore user error:', err);
+  } catch (err) {
+    console.error('[firestore] Initial user hydration failed:', err);
+    state.isProfileLoaded = true;
+    state.isGenerated = false;
+    state.athleteName = user.displayName || '';
+    state.profilePhoto = user.photoURL || null;
+    bootApp();
+  }
+
+  const unsubUser = userRef.onSnapshot((snap) => {
+    debugLog('User document snapshot received', { uid, exists: snap.exists });
+    applyUserProfile(snap.exists ? snap.data() : {}, user);
+    state.isProfileLoaded = true;
+    bootApp();
+  }, (err) => {
+    console.error('[firestore] User listener error:', err);
     state.isProfileLoaded = true;
     bootApp();
   });
 
-  const unsubWeight = db.collection(`users/${uid}/weightLogs`).orderBy('date', 'asc').onSnapshot(snap => {
+  const unsubWeight = attachCollectionListener(
+    db.collection(`users/${uid}/weightLogs`).orderBy('date', 'asc'),
+    'weightLogs',
+    (snap) => {
     state.weightLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderWeightChart();
     renderWeightChart('weight-chart-tracker', 'weightChartTrackerInstance');
     renderWeightLogList();
     updateHomeStats();
-  });
+    }
+  );
 
-  const unsubSleep = db.collection(`users/${uid}/sleepLogs`).orderBy('date', 'asc').onSnapshot(snap => {
+  const unsubSleep = attachCollectionListener(
+    db.collection(`users/${uid}/sleepLogs`).orderBy('date', 'asc'),
+    'sleepLogs',
+    (snap) => {
     state.sleepLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderSleepChart();
     renderSleepLogList();
     updateHomeStats();
-  });
+    }
+  );
 
-  const unsubGym = db.collection(`users/${uid}/gymLogs`).orderBy('date', 'asc').onSnapshot(snap => {
+  const unsubGym = attachCollectionListener(
+    db.collection(`users/${uid}/gymLogs`).orderBy('date', 'asc'),
+    'gymLogs',
+    (snap) => {
     state.gymLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     updateHomeStats();
     if (state.activeTab === 'tracker') renderTrackerTab();
-  });
+    }
+  );
 
-  const unsubNutrition = db.collection(`users/${uid}/nutritionLogs`).orderBy('date', 'asc').onSnapshot(snap => {
+  const unsubNutrition = attachCollectionListener(
+    db.collection(`users/${uid}/nutritionLogs`).orderBy('date', 'asc'),
+    'nutritionLogs',
+    (snap) => {
     state.nutritionLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (state.activeTab === 'tracker') renderTrackerTab();
-  });
+    }
+  );
 
   firestoreUnsubs = [unsubUser, unsubWeight, unsubSleep, unsubGym, unsubNutrition];
 }
@@ -1917,6 +2070,8 @@ function safeId(str) {
 
 function bootApp() {
   if (!state.user && !state.isGuestMode) return;
+
+  showScreen('main-app');
 
   if (state.isProfileLoaded && !state.isGenerated) {
     showInitModal(false);
