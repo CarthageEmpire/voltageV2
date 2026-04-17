@@ -2096,7 +2096,8 @@ function bootApp() {
     if (icon) icon.style.display = 'none';
   }
 
-  switchTab('home');
+  const nextTab = state.activeTab || 'home';
+  switchTab(nextTab);
   if (state.isGenerated) renderTrackerTab();
   refreshIcons();
 
