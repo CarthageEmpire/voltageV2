@@ -600,12 +600,24 @@ function unsubscribeAll() {
   firestoreUnsubs = [];
 }
 
-async function saveProfile(updates) {
-  if (!state.user) return;
+async function saveProfile(updates, options = {}) {
+  if (!state.user) return false;
+  const { timeoutMs = 8000, label = 'profile save' } = options;
   try {
-    await db.doc(`users/${state.user.uid}`).set(updates, { merge: true });
+    debugLog(`Starting ${label}`, { uid: state.user.uid, keys: Object.keys(updates || {}) });
+    await withTimeout(
+      db.doc(`users/${state.user.uid}`).set({
+        ...updates,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }),
+      timeoutMs,
+      label
+    );
+    debugLog(`Completed ${label}`, { uid: state.user.uid });
+    return true;
   } catch (e) {
-    console.error('Firestore write error:', e);
+    console.error(`[firestore] ${label} failed:`, e);
+    return false;
   }
 }
 
@@ -833,6 +845,13 @@ function hideInitModal() {
 }
 
 async function handleGenerateProtocol() {
+  const generateBtn = document.getElementById('generate-protocol-btn');
+  const originalBtnText = generateBtn?.textContent || 'Create Plan';
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Saving...';
+  }
+
   state.weight        = parseInt(document.getElementById('init-weight').value)   || 75;
   state.height        = parseInt(document.getElementById('init-height').value)   || 175;
   state.age           = parseInt(document.getElementById('init-age').value)      || 25;
@@ -841,30 +860,48 @@ async function handleGenerateProtocol() {
   state.goal          = document.getElementById('init-goal').value;
   state.isGenerated   = true;
 
+  hideInitModal();
+  addNotification('Welcome, Athlete. Your Elite Protocol is now initialized. Time to execute.');
+  renderHomeTab();
+  renderNutritionTab();
+  bootApp();
+  refreshIcons();
+
   if (state.user) {
-    await saveProfile({
+    saveProfile({
       uid:                state.user.uid,
       email:              state.user.email,
+      name:               state.athleteName || state.user.displayName || '',
+      photoURL:           state.profilePhoto || state.user.photoURL || '',
       goal:               state.goal,
       startWeight:        state.weight,
       height:             state.height,
       age:                state.age,
       sex:                state.sex,
       activityLevel:      state.activityLevel,
+      customExerciseData: state.customExerciseData,
       customNutritionData: state.customNutritionData,
       createdAt:          firebase.firestore.FieldValue.serverTimestamp()
+    }, { label: 'initial plan save' }).then((ok) => {
+      if (!ok) {
+        addNotification('Plan created locally, but Firebase sync failed. Try Update Plan again after checking Firestore rules/network.');
+      }
+    }).finally(() => {
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.textContent = originalBtnText;
+      }
     });
+    return;
   }
 
-  hideInitModal();
-  addNotification('Welcome, Athlete. Your Elite Protocol is now initialized. Time to execute.');
-  renderHomeTab();
-  renderNutritionTab();
   if (state.isGuestMode) {
     state.welcomeSent = true;
-    bootApp();
   }
-  refreshIcons();
+  if (generateBtn) {
+    generateBtn.disabled = false;
+    generateBtn.textContent = originalBtnText;
+  }
 }
 
 /* ============================================================
