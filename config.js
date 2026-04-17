@@ -42,11 +42,11 @@ const CONFIG = {
   // database via the compat SDK. Named databases need the modular SDK.
   // ----------------------------------------------------------
   FIREBASE: {
-  apiKey: "AIzaSyD8wlQKmUCTENHoPbb0Leq9Z1luZUfNN6M",
-  authDomain: "gen-lang-client-0476894197.firebaseapp.com",
-  projectId: "gen-lang-client-0476894197",
-  storageBucket: "gen-lang-client-0476894197.firebasestorage.app",
-  messagingSenderId: "509380570266",
-  appId: "1:509380570266:web:f22eb02c01cd5b51ac0323"
+  apiKey: "AIzaSyCFfQ-LL9_lNHB5HYtCKTIGno3HMc4RrwM",
+  authDomain: "sunstone2-766d9.firebaseapp.com",
+  projectId: "sunstone2-766d9",
+  storageBucket: "sunstone2-766d9.firebasestorage.app",
+  messagingSenderId: "561580634594",
+  appId: "1:561580634594:web:99f4ff0354e5f04ca1c9bb"
   }
 };
