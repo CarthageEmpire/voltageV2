@@ -2,5 +2,5 @@
 // This runs after config.js and can safely override placeholders.
 
 Object.assign(CONFIG, {
-  AI_API_KEY: "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"
+  AI_API_KEY: "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"
 });
