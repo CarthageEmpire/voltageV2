@@ -1,5 +1,5 @@
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -12,7 +12,7 @@ export default {
     }
 
     try {
-      const apiKey = globalThis.GROQ_API_KEY;
+      const apiKey = env?.GROQ_API_KEY;
       if (!apiKey) {
         return jsonResponse({ error: 'Server misconfigured: missing GROQ_API_KEY' }, 500);
       }

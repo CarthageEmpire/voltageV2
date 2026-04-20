@@ -2,3 +2,5 @@ name = "voltage-ai-proxy"
 main = "cloudflare-worker.js"
 compatibility_date = "2026-04-20"
 
+[secrets]
+required = ["GROQ_API_KEY"]
