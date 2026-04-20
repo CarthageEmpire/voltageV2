@@ -8,15 +8,17 @@ A single-page fitness dashboard with Firebase auth/data and AI-powered assistanc
 - `style.css` - app styles
 - `script.js` - app logic
 - `config.js` - frontend configuration (API and Firebase settings)
-- `config.local.js` - local secret overrides (ignored by git)
+- `config.local.js` - local secret overrides (ignored by git, create locally)
+- `config.local.example.js` - safe template for local secret overrides
 - `.env.example` - sample local environment values
 
 ## Quick Start
 
 1. Open `config.js` and keep placeholder values committed.
-2. Put your real `AI_API_KEY` in `config.local.js`.
-3. Fill the `FIREBASE` object in `config.js` with values from your Firebase project.
-4. Open `index.html` in a browser or serve the folder with a static server.
+2. Copy `config.local.example.js` to `config.local.js`.
+3. Put your real `AI_API_KEY` in `config.local.js`.
+4. Fill the `FIREBASE` object in `config.js` with values from your Firebase project.
+5. Open `index.html` in a browser or serve the folder with a static server.
 
 ## Public URL (GitHub Pages) With Real AI
 
