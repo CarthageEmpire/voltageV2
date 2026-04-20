@@ -29,7 +29,7 @@ const CONFIG = {
   // ----------------------------------------------------------
   AI_API_KEY: "your_groq_api_key_here",
 
-  AI_PROXY_URL: null,
+  AI_PROXY_URL: "https://lively-band-ab58.midou-skhiri000.workers.dev",
 
   // ----------------------------------------------------------
   // Firebase Configuration
