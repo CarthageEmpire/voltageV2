@@ -1667,6 +1667,18 @@ function getProxyUrl() {
   return String(CONFIG?.AI_PROXY_URL || '').trim();
 }
 
+function isGitHubPagesDeployment() {
+  const host = String(window?.location?.hostname || '').toLowerCase();
+  return host.endsWith('.github.io');
+}
+
+function getMissingAiConfigMessage() {
+  if (isGitHubPagesDeployment()) {
+    return 'GitHub Pages cannot safely store your Groq key. Deploy proxy/cloudflare-worker.js to Cloudflare Workers, add the GROQ_API_KEY secret there, then set AI_PROXY_URL in config.js to your worker URL.';
+  }
+  return 'Set AI_PROXY_URL for public deployment, or add your Groq key to config.local.js for local development.';
+}
+
 function buildFallbackCoachReply(userText) {
   const text = String(userText || '').toLowerCase();
 
@@ -1768,7 +1780,8 @@ User question: ${text}`;
 
   if (typeof CONFIG === 'undefined' || (!getProxyUrl() && isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
     hideTypingIndicator();
-    pushChatMessage('system', 'Tito is in demo mode on this deployment (no server-side key). Showing local coach response.');
+    pushChatMessage('system', 'Tito is in demo mode on this deployment because no secure AI backend is configured yet.');
+    pushChatMessage('system', getMissingAiConfigMessage());
     pushChatMessage('bot', buildFallbackCoachReply(text));
     return;
   }
@@ -1798,7 +1811,7 @@ User question: ${text}`;
     pushChatMessage('system', `Tito unavailable: ${msg}`);
 
     if (typeof CONFIG === 'undefined' || (!getProxyUrl() && isPlaceholderApiKey(CONFIG.AI_API_KEY))) {
-      pushChatMessage('system', 'Set AI_PROXY_URL for public deployment, or add your Groq key to config.local.js for local development.');
+      pushChatMessage('system', getMissingAiConfigMessage());
     }
 
     pushChatMessage('system', 'Using local fallback coach response due to AI connectivity issue.');

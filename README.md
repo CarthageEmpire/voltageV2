@@ -29,6 +29,8 @@ For public deployment, do not expose your Groq key in frontend files.
 3. Put your worker URL in `config.js` as `AI_PROXY_URL`.
 4. Keep `AI_API_KEY` in `config.js` as a placeholder and use `config.local.js` only for local testing.
 
+GitHub Pages is static hosting only. It cannot keep a Groq key private by itself, so Tito will stay in demo mode there until `AI_PROXY_URL` points to a deployed proxy.
+
 If `AI_PROXY_URL` is empty and no local key is present, Tito runs in demo fallback mode.
 
 ## Security Notes
